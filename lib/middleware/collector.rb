@@ -8,6 +8,7 @@ module PlexMediaServerExporter
         @registry = ::Prometheus::Client.registry
         @metrics_prefix = ENV["METRICS_PREFIX"] || "plex"
         @metrics_media_collecting_interval_seconds = ENV["METRICS_MEDIA_COLLECTING_INTERVAL_SECONDS"]&.to_i || 300
+        @sessions_count_metrics = Hash.new { |h, k| h[k] = Hash.new { |hh, kk| hh[kk] = 0 } }
 
         # Initialize metrics
         @metrics = {}
@@ -53,9 +54,12 @@ module PlexMediaServerExporter
             labels: info_labels.merge(state: "up"),
           )
 
-          sessions_count_by_state = Hash.new { |h, k| h[k] = 0 }
-          audio_transcode_sessions_count_by_state = Hash.new { |h, k| h[k] = 0 }
-          video_transcode_sessions_count_by_state = Hash.new { |h, k| h[k] = 0 }
+          # Reset all session count metrics back to 0 since previous attributes may have changed
+          @sessions_count_metrics.each do |_, kind_metrics|
+            kind_metrics.each do |key, _|
+              kind_metrics[key] = 0
+            end
+          end
 
           send_plex_api_request(method: :get, endpoint: "/status/sessions")
             .dig("MediaContainer", "Metadata")
@@ -64,24 +68,26 @@ module PlexMediaServerExporter
 
               if (transcode_session = session_resource.dig("TranscodeSession"))
                 if transcode_session.dig("audioDecision") == "transcode"
-                  audio_transcode_sessions_count_by_state[state] += 1
+                  @sessions_count_metrics[:audio_transcode][state] += 1
+                  # @audio_transcode_sessions_count_by_state[state] += 1
                 end
 
                 if transcode_session.dig("videoDecision") == "transcode"
-                  video_transcode_sessions_count_by_state[state] += 1
+                  @sessions_count_metrics[:video_transcode][state] += 1
+                  # @video_transcode_sessions_count_by_state[state] += 1
                 end
               end
 
-              sessions_count_by_state[state] += 1
+              @sessions_count_metrics[:default][state] += 1
             end
 
-          sessions_count_by_state.each do |state, count|
+          @sessions_count_metrics[:default].each do |state, count|
             @metrics[:sessions_count].set(count, labels: { state: state })
           end
-          audio_transcode_sessions_count_by_state.each do |state, count|
+          @sessions_count_metrics[:audio_transcode].each do |state, count|
             @metrics[:audio_transcode_sessions_count].set(count, labels: { state: state })
           end
-          video_transcode_sessions_count_by_state.each do |state, count|
+          @sessions_count_metrics[:video_transcode].each do |state, count|
             @metrics[:video_transcode_sessions_count].set(count, labels: { state: state })
           end
 
