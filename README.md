@@ -8,8 +8,11 @@ A better Prometheus exporter for Plex Media Server.
 docker run ghcr.io/axsuul/plex-media-server-exporter
 ```
 
+Metrics endpoint is served by default via `http://localhost:9594/metrics`.
+
 These environment variables can be passed into the container (defaults are in parentheses):
 
+* `PORT` (`9594`)
 * `PLEX_ADDR` (`http://localhost:32400`)
   - Plex Media Server address
 * `PLEX_TOKEN`
@@ -19,6 +22,8 @@ These environment variables can be passed into the container (defaults are in pa
   - How often to throttle collection of media metrics
 
 ## Metrics
+
+Served by default via `http://localhost:9594/metrics`
 
 ```
 # TYPE plex_info gauge
