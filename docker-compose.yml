@@ -1,0 +1,16 @@
+version: '3.4'
+
+services:
+  plex-media-server-exporter:
+    image: axsuul/plex-media-server-exporter:2022-11-26
+    build: .
+    environment:
+      # Can be set in .env
+      - PLEX_ADDR=${PLEX_ADDR}
+      - PLEX_TOKEN=${PLEX_TOKEN}
+    volumes:
+      - .:/srv:delegated
+    tty: true
+    stdin_open: true
+    ports:
+      - "9594:9594"
