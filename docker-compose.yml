@@ -8,6 +8,7 @@ services:
       # Can be set in .env
       - PLEX_ADDR=${PLEX_ADDR}
       - PLEX_TOKEN=${PLEX_TOKEN}
+      - METRICS_MEDIA_COLLECTING_INTERVAL_SECONDS=300
     volumes:
       - .:/srv:delegated
     tty: true

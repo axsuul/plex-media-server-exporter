@@ -7,7 +7,7 @@ module PlexMediaServerExporter
         @app = app
         @registry = ::Prometheus::Client.registry
         @metrics_prefix = ENV["METRICS_PREFIX"] || "plex"
-        @metrics_media_collecting_interval_seconds = ENV["METRICS_MEDIA_COLLECTING_INTERVAL_SECONDS"] || 300
+        @metrics_media_collecting_interval_seconds = ENV["METRICS_MEDIA_COLLECTING_INTERVAL_SECONDS"]&.to_i || 300
 
         # Initialize metrics
         @metrics = {}
