@@ -69,7 +69,7 @@ module PlexMediaServerExporter
 
           send_plex_api_request(method: :get, endpoint: "/status/sessions")
             .dig("MediaContainer", "Metadata")
-            .each do |session_resource|
+            &.each do |session_resource|
               state = session_resource.dig("Player", "state")
 
               if (transcode_session = session_resource.dig("TranscodeSession"))
