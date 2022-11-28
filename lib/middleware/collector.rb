@@ -3,10 +3,12 @@ require "http"
 module PlexMediaServerExporter
   module Middleware
     class Collector
+      SESSION_COUNT_METRIC_KINDS = [:all, :audio_transcode, :video_transcode].freeze
+      SESSION_STATES = ["buffering", "paused", "playing"].freeze
+
       def initialize(app)
         @app = app
         @registry = ::Prometheus::Client.registry
-        @sessions_count_metrics = Hash.new { |h, k| h[k] = Hash.new { |hh, kk| hh[kk] = 0 } }
 
         # Plex configs
         @plex_addr = ENV["PLEX_ADDR"] || "http://localhost:32400"
@@ -28,7 +30,7 @@ module PlexMediaServerExporter
           docstring: "Number of media in library",
           labels: [:title, :type],
         )
-        @metrics[:sessions_count] = @registry.gauge(
+        @metrics[:all_sessions_count] = @registry.gauge(
           :"#{@metrics_prefix}_sessions_count",
           docstring: "Number of current sessions",
           labels: [:state],
@@ -56,49 +58,15 @@ module PlexMediaServerExporter
           info_labels[:version] = capabilities_resource.dig("version")
           info_labels[:platform] = capabilities_resource.dig("platform")
 
+          # Value of 1 means there's a heartbeat
           @metrics[:info].set(1,
             labels: info_labels,
           )
 
-          # Reset all session count metrics back to 0 since previous attributes may have changed
-          @sessions_count_metrics.each do |_, kind_metrics|
-            kind_metrics.each do |key, _|
-              kind_metrics[key] = 0
-            end
-          end
-
-          send_plex_api_request(method: :get, endpoint: "/status/sessions")
-            .dig("MediaContainer", "Metadata")
-            &.each do |session_resource|
-              state = session_resource.dig("Player", "state")
-
-              if (transcode_session = session_resource.dig("TranscodeSession"))
-                if transcode_session.dig("audioDecision") == "transcode"
-                  @sessions_count_metrics[:audio_transcode][state] += 1
-                end
-
-                if transcode_session.dig("videoDecision") == "transcode"
-                  @sessions_count_metrics[:video_transcode][state] += 1
-                end
-              end
-
-              @sessions_count_metrics[:default][state] += 1
-            end
-
-          @sessions_count_metrics[:default].each do |state, count|
-            @metrics[:sessions_count].set(count, labels: { state: state })
-          end
-          @sessions_count_metrics[:audio_transcode].each do |state, count|
-            @metrics[:audio_transcode_sessions_count].set(count, labels: { state: state })
-          end
-          @sessions_count_metrics[:video_transcode].each do |state, count|
-            @metrics[:video_transcode_sessions_count].set(count, labels: { state: state })
-          end
-
+          collect_session_metrics
           collect_media_metrics
-
-        # Could not reach Plex so it's down
         rescue HTTP::Error
+          # Value of 0 means there's no heartbeat
           @metrics[:info].set(0,
             labels: info_labels,
           )
@@ -108,6 +76,41 @@ module PlexMediaServerExporter
       end
 
       private
+
+      def collect_session_metrics
+        count_metrics = Hash.new { |h, k| h[k] = {} }
+
+        # Initialize
+        SESSION_COUNT_METRIC_KINDS.each do |metric_kind|
+          SESSION_STATES.each do |state|
+            count_metrics[metric_kind][state] = 0
+          end
+        end
+
+        send_plex_api_request(method: :get, endpoint: "/status/sessions")
+          .dig("MediaContainer", "Metadata")
+          &.each do |session_resource|
+            state = session_resource.dig("Player", "state")
+
+            if (transcode_session = session_resource.dig("TranscodeSession"))
+              if transcode_session.dig("audioDecision") == "transcode"
+                count_metrics[:audio_transcode][state] += 1
+              end
+
+              if transcode_session.dig("videoDecision") == "transcode"
+                count_metrics[:video_transcode][state] += 1
+              end
+            end
+
+            count_metrics[:all][state] += 1
+          end
+
+        SESSION_COUNT_METRIC_KINDS.each do |metric_kind|
+          count_metrics[metric_kind].each do |state, count|
+            @metrics[:"#{metric_kind}_sessions_count"].set(count, labels: { state: state })
+          end
+        end
+      end
 
       def collect_media_metrics
         # Add ability to throttle this in case it negatively impacts
