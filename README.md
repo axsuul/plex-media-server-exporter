@@ -20,6 +20,7 @@ These environment variables can be passed into the container (defaults are in pa
 * `PLEX_TIMEOUT` (`10`)
   - How long to wait for requests to Plex Media Server before `state="down"`
 * `METRICS_PREFIX` (`plex`)
+  - What to prefix metric names with
 * `METRICS_MEDIA_COLLECTING_INTERVAL_SECONDS` (`300`)
   - How often to throttle collection of media metrics
 
