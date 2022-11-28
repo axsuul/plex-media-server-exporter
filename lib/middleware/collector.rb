@@ -6,9 +6,15 @@ module PlexMediaServerExporter
       def initialize(app)
         @app = app
         @registry = ::Prometheus::Client.registry
+        @sessions_count_metrics = Hash.new { |h, k| h[k] = Hash.new { |hh, kk| hh[kk] = 0 } }
+
+        # Plex configs
+        @plex_addr = ENV["PLEX_ADDR"] || "http://localhost:32400"
+        @plex_timeout = ENV["PLEX_TIMEOUT"]&.to_i || 10
+
+        # Metrics configs
         @metrics_prefix = ENV["METRICS_PREFIX"] || "plex"
         @metrics_media_collecting_interval_seconds = ENV["METRICS_MEDIA_COLLECTING_INTERVAL_SECONDS"]&.to_i || 300
-        @sessions_count_metrics = Hash.new { |h, k| h[k] = Hash.new { |hh, kk| hh[kk] = 0 } }
 
         # Initialize metrics
         @metrics = {}
@@ -94,7 +100,7 @@ module PlexMediaServerExporter
           collect_media_metrics
 
         # Could not reach Plex so it's down
-        rescue HTTP::ConnectionError
+        rescue HTTP::Error
           @metrics[:info].set(1,
             labels: info_labels.merge(state: "down"),
           )
@@ -139,13 +145,13 @@ module PlexMediaServerExporter
       end
 
       def send_plex_api_request(method:, endpoint:, **options)
-        addr = ENV["PLEX_ADDR"] || "http://localhost:32400"
         response = HTTP
+          .timeout(@plex_timeout)
           .headers(
             "X-Plex-Token" => ENV["PLEX_TOKEN"],
             "Accept" => "application/json",
           )
-          .public_send(method, "#{addr}#{endpoint}", **options)
+          .public_send(method, "#{@plex_addr}#{endpoint}", **options)
 
         JSON.parse(response)
       end
