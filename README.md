@@ -22,7 +22,7 @@ These environment variables can be passed into the container (defaults are in pa
 * `METRICS_PREFIX` (`plex`)
   - What to prefix metric names with
 * `METRICS_MEDIA_COLLECTING_INTERVAL_SECONDS` (`300`)
-  - How often to throttle collection of media metrics
+  - How often to throttle collection of media metrics which can take longer to complete depending on how large of a library you have
 
 ## Metrics
 
