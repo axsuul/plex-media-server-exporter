@@ -101,7 +101,7 @@ module PlexMediaServerExporter
 
         # Could not reach Plex so it's down
         rescue HTTP::Error
-          @metrics[:info].set(1,
+          @metrics[:info].set(0,
             labels: info_labels.merge(state: "down"),
           )
         end
