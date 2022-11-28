@@ -18,7 +18,7 @@ These environment variables can be passed into the container (defaults are in pa
 * `PLEX_TOKEN`
   - Plex Media Server token
 * `PLEX_TIMEOUT` (`10`)
-  - How long to wait for requests to Plex Media Server before `state="down"`
+  - How long to wait for Plex Media Server to respond
 * `METRICS_PREFIX` (`plex`)
   - What to prefix metric names with
 * `METRICS_MEDIA_COLLECTING_INTERVAL_SECONDS` (`300`)
@@ -30,8 +30,8 @@ Served by default via `http://localhost:9594/metrics`
 
 ```
 # TYPE plex_info gauge
-# HELP plex_info Basic server info
-plex_info{version="1.29.2.6364-6d72b0cf6",platform="Linux",state="up"} 1.0
+# HELP plex_info Server diagnostics and hearbeat (1=up, 0=down)
+plex_info{version="1.29.2.6364-6d72b0cf6",platform="Linux"} 1.0
 # TYPE plex_media_count gauge
 # HELP plex_media_count Number of media in library
 plex_media_count{title="Movies",type="movie"} 19318.0

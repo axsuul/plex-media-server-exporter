@@ -20,8 +20,8 @@ module PlexMediaServerExporter
         @metrics = {}
         @metrics[:info] = @registry.gauge(
           :"#{@metrics_prefix}_info",
-          docstring: "Basic server info",
-          labels: [:platform, :state, :version],
+          docstring: "Server diagnostics and heartbeat (1=up, 0=down)",
+          labels: [:platform, :version],
         )
         @metrics[:media_count] = @registry.gauge(
           :"#{@metrics_prefix}_media_count",
@@ -57,7 +57,7 @@ module PlexMediaServerExporter
           info_labels[:platform] = capabilities_resource.dig("platform")
 
           @metrics[:info].set(1,
-            labels: info_labels.merge(state: "up"),
+            labels: info_labels,
           )
 
           # Reset all session count metrics back to 0 since previous attributes may have changed
@@ -75,12 +75,10 @@ module PlexMediaServerExporter
               if (transcode_session = session_resource.dig("TranscodeSession"))
                 if transcode_session.dig("audioDecision") == "transcode"
                   @sessions_count_metrics[:audio_transcode][state] += 1
-                  # @audio_transcode_sessions_count_by_state[state] += 1
                 end
 
                 if transcode_session.dig("videoDecision") == "transcode"
                   @sessions_count_metrics[:video_transcode][state] += 1
-                  # @video_transcode_sessions_count_by_state[state] += 1
                 end
               end
 
@@ -102,7 +100,7 @@ module PlexMediaServerExporter
         # Could not reach Plex so it's down
         rescue HTTP::Error
           @metrics[:info].set(0,
-            labels: info_labels.merge(state: "down"),
+            labels: info_labels,
           )
         end
 
