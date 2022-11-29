@@ -20,10 +20,14 @@ module PlexMediaServerExporter
 
         # Initialize metrics
         @metrics = {}
+        @metrics[:up] = @registry.gauge(
+          :"#{@metrics_prefix}_up",
+          docstring: "Server heartbeat",
+        )
         @metrics[:info] = @registry.gauge(
           :"#{@metrics_prefix}_info",
-          docstring: "Server diagnostics and heartbeat (1=up, 0=down)",
-          labels: [:platform, :version],
+          docstring: "Server diagnostics",
+          labels: [:version],
         )
         @metrics[:media_count] = @registry.gauge(
           :"#{@metrics_prefix}_media_count",
@@ -48,28 +52,21 @@ module PlexMediaServerExporter
       end
 
       def call(env)
-        info_labels = {
-          version: nil,
-          platform: nil,
-        }
-
         begin
           capabilities_resource = send_plex_api_request(method: :get, endpoint: "/").dig("MediaContainer")
-          info_labels[:version] = capabilities_resource.dig("version")
-          info_labels[:platform] = capabilities_resource.dig("platform")
 
-          # Value of 1 means there's a heartbeat
+          @metrics[:up].set(1)
           @metrics[:info].set(1,
-            labels: info_labels,
+            labels: {
+              version: capabilities_resource.dig("version"),
+            },
           )
 
           collect_session_metrics
           collect_media_metrics
         rescue HTTP::Error
           # Value of 0 means there's no heartbeat
-          @metrics[:info].set(0,
-            labels: info_labels,
-          )
+          @metrics[:up].set(0)
         end
 
         @app.call(env)

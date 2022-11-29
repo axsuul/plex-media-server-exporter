@@ -29,9 +29,12 @@ These environment variables can be passed into the container (defaults are in pa
 Served by default via `http://localhost:9594/metrics`
 
 ```
+# TYPE plex_up gauge
+# HELP plex_up Server heartbeat
+plex_up 1.0
 # TYPE plex_info gauge
-# HELP plex_info Server diagnostics and hearbeat (1=up, 0=down)
-plex_info{version="1.29.2.6364-6d72b0cf6",platform="Linux"} 1.0
+# HELP plex_info Server diagnostics
+plex_info{version="1.29.2.6364-6d72b0cf6"} 1.0
 # TYPE plex_media_count gauge
 # HELP plex_media_count Number of media in library
 plex_media_count{title="Movies",type="movie"} 19318.0
