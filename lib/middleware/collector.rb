@@ -120,26 +120,48 @@ module PlexMediaServerExporter
         send_plex_api_request(method: :get, endpoint: "/library/sections")
           .dig("MediaContainer", "Directory")
           .each do |directory_resource|
-            media_count = send_plex_api_request(
-              method: :get,
-              endpoint: "/library/sections/#{directory_resource.dig('key')}/all",
-              params: {
-                # Don't return any items, just the count, to keep the request speedy
-                "X-Plex-Container-Size" => "0",
-                "X-Plex-Container-Start" => "0",
-              },
-            )
-              .dig("MediaContainer", "totalSize")
+            key = directory_resource.dig("key")
+            media_title = directory_resource.dig("title")
+            media_type = directory_resource.dig("type")
+            media_count = get_media_section_count(key: key)
 
             @metrics[:media_count].set(media_count,
               labels: {
-                title: directory_resource.dig("title"),
-                type: directory_resource.dig("type"),
+                title: media_title,
+                type: media_type,
               },
             )
+
+            case media_type
+
+            # If its for a show type library, also count its episodes
+            when "show"
+              show_episodes_count = get_media_section_count(key: key, params: { "type" => "4" })
+
+              @metrics[:media_count].set(show_episodes_count,
+                labels: {
+                  title: "#{media_title} - Episodes",
+                  type: "show_episode",
+                },
+              )
+            end
           end
 
         @media_metrics_collected_at = Time.now
+      end
+
+      def get_media_section_count(key:, params: {}, **options)
+        send_plex_api_request(
+          method: :get,
+          endpoint: "/library/sections/#{key}/all",
+          params: params.merge(
+            # Don't return any items, just the count, to keep the request speedy
+            "X-Plex-Container-Size" => "0",
+            "X-Plex-Container-Start" => "0",
+          ),
+          **options,
+        )
+          .dig("MediaContainer", "totalSize")
       end
 
       def send_plex_api_request(method:, endpoint:, **options)
