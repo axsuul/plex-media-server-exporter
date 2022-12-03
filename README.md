@@ -39,6 +39,7 @@ plex_info{version="1.29.2.6364-6d72b0cf6"} 1.0
 # HELP plex_media_count Number of media in library
 plex_media_count{title="Movies",type="movie"} 19318.0
 plex_media_count{title="Shows",type="show"} 2318.0
+plex_media_count{title="Shows - Episodes",type="show_episode"} 66443.0
 plex_media_count{title="Audiobooks",type="artist"} 17.0
 plex_media_count{title="Music",type="artist"} 891.0
 # TYPE plex_sessions_count gauge
