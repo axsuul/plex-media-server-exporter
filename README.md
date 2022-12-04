@@ -57,4 +57,8 @@ plex_audio_transcode_sessions_count{state="playing"} 0.0
 plex_video_transcode_sessions_count{state="buffering"} 0.0
 plex_video_transcode_sessions_count{state="paused"} 0.0
 plex_video_transcode_sessions_count{state="playing"} 1.0
+# TYPE plex_media_downloads_count gauge
+# HELP plex_media_downloads_count Number of current media downloads
+plex_media_downloads_count{user_id="1",username="axsuul"} 1.0
+plex_media_downloads_count{user_id="2",username="hoarder"} 3.0
 ```

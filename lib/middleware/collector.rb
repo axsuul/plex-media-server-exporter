@@ -46,9 +46,9 @@ module PlexMediaServerExporter
           docstring: "Number of current sessions that are transcoding video",
           labels: [:state],
         )
-        @metrics[:media_download_activities_count] = @registry.gauge(
-          :"#{@metrics_prefix}_media_download_activities_count",
-          docstring: "Number of current activities that are downloading media",
+        @metrics[:media_downloads_count] = @registry.gauge(
+          :"#{@metrics_prefix}_media_downloads_count",
+          docstring: "Number of current media downloads",
           labels: [:user_id, :username],
         )
       end
@@ -65,7 +65,7 @@ module PlexMediaServerExporter
           )
 
           collect_session_metrics
-          # collect_activity_metrics
+          collect_activity_metrics
           collect_media_metrics
         rescue HTTP::Error
           # Value of 0 means there's no heartbeat
@@ -78,14 +78,25 @@ module PlexMediaServerExporter
       private
 
       def collect_activity_metrics
-        count_metrics = Hash.new { |h, k| h[k] = {} }
+        values = Hash.new { |h, k| h[k] = 0 }
 
-        # Initialize
-        SESSION_COUNT_METRIC_KINDS.each do |metric_kind|
-          SESSION_STATES.each do |state|
-            count_metrics[metric_kind][state] = 0
+        send_plex_api_request(method: :get, endpoint: "/activities")
+          .dig("MediaContainer", "Activity")
+          &.each do |activity_resource|
+            next unless activity_resource.dig("type") == "media.download"
+
+            # The title will be something like "Media download by user123"
+            username = activity_resource.dig("title").split(/\s+/).last
+
+            labels = {
+              user_id: activity_resource.dig("userID"),
+              username: username,
+            }
+
+            values[labels] += 1
           end
-        end
+
+        set_gauge_metric_values_or_reset_missing(metric: @metrics[:media_downloads_count], values: values)
       end
 
       def collect_session_metrics
@@ -116,7 +127,7 @@ module PlexMediaServerExporter
             values[{ state: state }] = count
           end
 
-          set_or_reset_gauge_metric_values(metric: @metrics[:"#{metric_kind}_sessions_count"], values: values)
+          set_gauge_metric_values_or_reset_missing(metric: @metrics[:"#{metric_kind}_sessions_count"], values: values)
         end
       end
 
@@ -150,7 +161,7 @@ module PlexMediaServerExporter
             end
           end
 
-        set_or_reset_gauge_metric_values(metric: @metrics[:media_count], values: values)
+        set_gauge_metric_values_or_reset_missing(metric: @metrics[:media_count], values: values)
 
         @media_metrics_collected_at = Time.now
       end
@@ -181,11 +192,12 @@ module PlexMediaServerExporter
         JSON.parse(response)
       end
 
-      def set_or_reset_gauge_metric_values(metric:, values:)
+      # Set metric values and reset all other labels that werenn't passed in
+      def set_gauge_metric_values_or_reset_missing(metric:, values:)
         missing_labels_collection = metric.values.keys - values.keys
 
         # Reset all values with labels that weren't passed in
-        missing_labels_collection.each { |l| metric.set(0, l) }
+        missing_labels_collection.each { |l| metric.set(0, labels: l) }
 
         values.each do |labels, labels_value|
           metric.set(labels_value, labels: labels)
