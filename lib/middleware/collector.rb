@@ -3,9 +3,6 @@ require "http"
 module PlexMediaServerExporter
   module Middleware
     class Collector
-      SESSION_COUNT_METRIC_KINDS = [:all, :audio_transcode, :video_transcode].freeze
-      SESSION_STATES = ["buffering", "paused", "playing"].freeze
-
       def initialize(app)
         @app = app
         @registry = ::Prometheus::Client.registry
@@ -49,6 +46,11 @@ module PlexMediaServerExporter
           docstring: "Number of current sessions that are transcoding video",
           labels: [:state],
         )
+        @metrics[:media_downloads_count] = @registry.gauge(
+          :"#{@metrics_prefix}_media_downloads_count",
+          docstring: "Number of current media downloads",
+          labels: [:user_id, :username],
+        )
       end
 
       def call(env)
@@ -63,6 +65,7 @@ module PlexMediaServerExporter
           )
 
           collect_session_metrics
+          collect_activity_metrics
           collect_media_metrics
         rescue HTTP::Error
           # Value of 0 means there's no heartbeat
@@ -74,15 +77,30 @@ module PlexMediaServerExporter
 
       private
 
-      def collect_session_metrics
-        count_metrics = Hash.new { |h, k| h[k] = {} }
+      def collect_activity_metrics
+        values = Hash.new { |h, k| h[k] = 0 }
 
-        # Initialize
-        SESSION_COUNT_METRIC_KINDS.each do |metric_kind|
-          SESSION_STATES.each do |state|
-            count_metrics[metric_kind][state] = 0
+        send_plex_api_request(method: :get, endpoint: "/activities")
+          .dig("MediaContainer", "Activity")
+          &.each do |activity_resource|
+            next unless activity_resource.dig("type") == "media.download"
+
+            # The title will be something like "Media download by user123"
+            username = activity_resource.dig("title").split(/\s+/).last
+
+            labels = {
+              user_id: activity_resource.dig("userID"),
+              username: username,
+            }
+
+            values[labels] += 1
           end
-        end
+
+        set_gauge_metric_values_or_reset_missing(metric: @metrics[:media_downloads_count], values: values)
+      end
+
+      def collect_session_metrics
+        collected = Hash.new { |h, k| h[k] = Hash.new { |hh, kk| hh[kk] = 0 } }
 
         send_plex_api_request(method: :get, endpoint: "/status/sessions")
           .dig("MediaContainer", "Metadata")
@@ -91,21 +109,25 @@ module PlexMediaServerExporter
 
             if (transcode_session = session_resource.dig("TranscodeSession"))
               if transcode_session.dig("audioDecision") == "transcode"
-                count_metrics[:audio_transcode][state] += 1
+                collected[:audio_transcode][state] += 1
               end
 
               if transcode_session.dig("videoDecision") == "transcode"
-                count_metrics[:video_transcode][state] += 1
+                collected[:video_transcode][state] += 1
               end
             end
 
-            count_metrics[:all][state] += 1
+            collected[:all][state] += 1
           end
 
-        SESSION_COUNT_METRIC_KINDS.each do |metric_kind|
-          count_metrics[metric_kind].each do |state, count|
-            @metrics[:"#{metric_kind}_sessions_count"].set(count, labels: { state: state })
+        collected.each do |metric_kind, counts_by_state|
+          values = {}
+
+          counts_by_state.each do |state, count|
+            values[{ state: state }] = count
           end
+
+          set_gauge_metric_values_or_reset_missing(metric: @metrics[:"#{metric_kind}_sessions_count"], values: values)
         end
       end
 
@@ -117,40 +139,34 @@ module PlexMediaServerExporter
           end
         end
 
+        values = Hash.new { |h| h[k] = 0 }
+
         send_plex_api_request(method: :get, endpoint: "/library/sections")
           .dig("MediaContainer", "Directory")
           .each do |directory_resource|
             key = directory_resource.dig("key")
             media_title = directory_resource.dig("title")
             media_type = directory_resource.dig("type")
-            media_count = get_media_section_count(key: key)
+            media_count = fetch_media_section_count(key: key)
 
-            @metrics[:media_count].set(media_count,
-              labels: {
-                title: media_title,
-                type: media_type,
-              },
-            )
+            values[{ title: media_title, type: media_type }] = media_count
 
             case media_type
 
             # If its for a show type library, also count its episodes
             when "show"
-              show_episodes_count = get_media_section_count(key: key, params: { "type" => "4" })
+              show_episodes_count = fetch_media_section_count(key: key, params: { "type" => "4" })
 
-              @metrics[:media_count].set(show_episodes_count,
-                labels: {
-                  title: "#{media_title} - Episodes",
-                  type: "show_episode",
-                },
-              )
+              values[{ title: "#{media_title} - Episodes", type: "show_episode" }] = show_episodes_count
             end
           end
+
+        set_gauge_metric_values_or_reset_missing(metric: @metrics[:media_count], values: values)
 
         @media_metrics_collected_at = Time.now
       end
 
-      def get_media_section_count(key:, params: {}, **options)
+      def fetch_media_section_count(key:, params: {}, **options)
         send_plex_api_request(
           method: :get,
           endpoint: "/library/sections/#{key}/all",
@@ -174,6 +190,18 @@ module PlexMediaServerExporter
           .public_send(method, "#{@plex_addr}#{endpoint}", **options)
 
         JSON.parse(response)
+      end
+
+      # Set metric values and reset all other labels that werenn't passed in
+      def set_gauge_metric_values_or_reset_missing(metric:, values:)
+        missing_labels_collection = metric.values.keys - values.keys
+
+        # Reset all values with labels that weren't passed in
+        missing_labels_collection.each { |l| metric.set(0, labels: l) }
+
+        values.each do |labels, labels_value|
+          metric.set(labels_value, labels: labels)
+        end
       end
     end
   end
