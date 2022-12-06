@@ -194,6 +194,9 @@ module PlexMediaServerExporter
 
       # Set metric values and reset all other labels that werenn't passed in
       def set_gauge_metric_values_or_reset_missing(metric:, values:)
+        puts "#{metric.name} metric values: #{metric.values.inspect}"
+        puts "#{metric.name} passed in values: #{values.inspect}"
+
         missing_labels_collection = metric.values.keys - values.keys
 
         # Reset all values with labels that weren't passed in
