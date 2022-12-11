@@ -100,7 +100,12 @@ module PlexMediaServerExporter
       end
 
       def collect_session_metrics
-        collected = Hash.new { |h, k| h[k] = Hash.new { |hh, kk| hh[kk] = 0 } }
+        collected = {}
+
+        # Initialize
+        [:all, :audio_transcode, :video_transcode].each do |kind|
+          collected[kind] = Hash.new { |h, k| h[k] = 0 }
+        end
 
         send_plex_api_request(method: :get, endpoint: "/status/sessions")
           .dig("MediaContainer", "Metadata")
@@ -199,10 +204,13 @@ module PlexMediaServerExporter
 
         missing_labels_collection = metric.values.keys - values.keys
 
+        puts "#{metric.name} setting #{missing_labels_collection.inspect} labels to 0"
+
         # Reset all values with labels that weren't passed in
         missing_labels_collection.each { |l| metric.set(0, labels: l) }
 
         values.each do |labels, labels_value|
+          puts "#{metric.name} setting #{labels.inspect} to #{labels_value}"
           metric.set(labels_value, labels: labels)
         end
       end
