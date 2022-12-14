@@ -56,11 +56,12 @@ module PlexMediaServerExporter
       def call(env)
         begin
           capabilities_resource = send_plex_api_request(method: :get, endpoint: "/").dig("MediaContainer")
+          metric_up_value = 1
 
-          @metrics[:up].set(1)
-          @metrics[:info].set(1,
-            labels: {
-              version: capabilities_resource.dig("version"),
+          set_gauge_metric_values_or_reset_missing(
+            metric: @metrics[:info],
+            values: {
+              { version: capabilities_resource.dig("version") } => 1,
             },
           )
 
@@ -69,7 +70,14 @@ module PlexMediaServerExporter
           collect_media_metrics
         rescue HTTP::Error
           # Value of 0 means there's no heartbeat
-          @metrics[:up].set(0)
+          metric_up_value = 0
+        ensure
+          set_gauge_metric_values_or_reset_missing(
+            metric: @metrics[:up],
+            values: {
+              {} => metric_up_value,
+            },
+          )
         end
 
         @app.call(env)
@@ -100,7 +108,12 @@ module PlexMediaServerExporter
       end
 
       def collect_session_metrics
-        collected = Hash.new { |h, k| h[k] = Hash.new { |hh, kk| hh[kk] = 0 } }
+        collected = {}
+
+        # Initialize
+        [:all, :audio_transcode, :video_transcode].each do |kind|
+          collected[kind] = Hash.new { |h, k| h[k] = 0 }
+        end
 
         send_plex_api_request(method: :get, endpoint: "/status/sessions")
           .dig("MediaContainer", "Metadata")
