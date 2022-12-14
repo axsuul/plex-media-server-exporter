@@ -57,10 +57,16 @@ module PlexMediaServerExporter
         begin
           capabilities_resource = send_plex_api_request(method: :get, endpoint: "/").dig("MediaContainer")
 
-          @metrics[:up].set(1)
-          @metrics[:info].set(1,
-            labels: {
-              version: capabilities_resource.dig("version"),
+          set_gauge_metric_values_or_reset_missing(
+            metric: @metrics[:up],
+            values: {
+              {} => 1,
+            },
+          )
+          set_gauge_metric_values_or_reset_missing(
+            metric: @metrics[:info],
+            values: {
+              { version: capabilities_resource.dig("version") } => 1,
             },
           )
 
