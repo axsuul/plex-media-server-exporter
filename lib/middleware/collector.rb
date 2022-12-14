@@ -56,13 +56,8 @@ module PlexMediaServerExporter
       def call(env)
         begin
           capabilities_resource = send_plex_api_request(method: :get, endpoint: "/").dig("MediaContainer")
+          metric_up_value = 1
 
-          set_gauge_metric_values_or_reset_missing(
-            metric: @metrics[:up],
-            values: {
-              {} => 1,
-            },
-          )
           set_gauge_metric_values_or_reset_missing(
             metric: @metrics[:info],
             values: {
@@ -75,7 +70,14 @@ module PlexMediaServerExporter
           collect_media_metrics
         rescue HTTP::Error
           # Value of 0 means there's no heartbeat
-          @metrics[:up].set(0)
+          metric_up_value = 0
+        ensure
+          set_gauge_metric_values_or_reset_missing(
+            metric: @metrics[:up],
+            values: {
+              {} => metric_up_value,
+            },
+          )
         end
 
         @app.call(env)
@@ -205,18 +207,12 @@ module PlexMediaServerExporter
 
       # Set metric values and reset all other labels that werenn't passed in
       def set_gauge_metric_values_or_reset_missing(metric:, values:)
-        puts "#{metric.name} metric values: #{metric.values.inspect}"
-        puts "#{metric.name} passed in values: #{values.inspect}"
-
         missing_labels_collection = metric.values.keys - values.keys
-
-        puts "#{metric.name} setting #{missing_labels_collection.inspect} labels to 0"
 
         # Reset all values with labels that weren't passed in
         missing_labels_collection.each { |l| metric.set(0, labels: l) }
 
         values.each do |labels, labels_value|
-          puts "#{metric.name} setting #{labels.inspect} to #{labels_value}"
           metric.set(labels_value, labels: labels)
         end
       end
