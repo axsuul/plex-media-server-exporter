@@ -65,6 +65,6 @@ plex_media_downloads_count{user_id="2",username="hoarder"} 3.0
 
 ## Grafana
 
-Use this [panel JSON file](examples/grafana/export.json) to import a Grafana dashboard that looks like
+Use this [panel JSON file](examples/grafana/dashboard.json) to import a Grafana dashboard that looks like
 
 ![Grafana Dashboard Example](examples/grafana/screenshot.png)
