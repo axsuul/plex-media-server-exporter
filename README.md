@@ -65,6 +65,6 @@ plex_media_downloads_count{user_id="2",username="hoarder"} 3.0
 
 ## Grafana
 
-of what's possible with these Prometheus metrics.
+Build this kind of Grafana dashboard using [this template](https://grafana.com/grafana/dashboards/17891-plex-template-example/).
 
-![Grafana Example](assets/images/grafana-example.png)
+![Grafana Dashboard Example](assets/images/grafana-dashboard-example.png)
