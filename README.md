@@ -65,6 +65,6 @@ plex_media_downloads_count{user_id="2",username="hoarder"} 3.0
 
 ## Grafana
 
-Build this kind of Grafana dashboard using [this template](https://grafana.com/grafana/dashboards/17891-plex-template-example/).
+Use this [panel JSON file](examples/grafana/export.json) to import a Grafana dashboard that looks like
 
-![Grafana Dashboard Example](assets/images/grafana-dashboard-example.png)
+![Grafana Dashboard Example](examples/grafana/screenshot.png)
