@@ -62,3 +62,9 @@ plex_video_transcode_sessions_count{state="playing"} 1.0
 plex_media_downloads_count{user_id="1",username="axsuul"} 1.0
 plex_media_downloads_count{user_id="2",username="hoarder"} 3.0
 ```
+
+## Grafana
+
+of what's possible with these Prometheus metrics.
+
+[Grafana Example](assets/images/grafana-example.png)
