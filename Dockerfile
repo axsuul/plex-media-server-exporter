@@ -1,4 +1,4 @@
-FROM ruby:3.0.5
+FROM ruby:3-alpine3.18
 
 MAINTAINER James Hu <hello@james.hu>
 
