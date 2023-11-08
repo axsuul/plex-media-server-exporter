@@ -34,22 +34,22 @@ module PlexMediaServerExporter
         @metrics[:all_sessions_count] = @registry.gauge(
           :"#{@metrics_prefix}_sessions_count",
           docstring: "Number of current sessions",
-          labels: [:state, :user],
+          labels: [:state, :user_id, :username],
         )
         @metrics[:audio_transcode_sessions_count] = @registry.gauge(
           :"#{@metrics_prefix}_audio_transcode_sessions_count",
           docstring: "Number of current sessions that are transcoding audio",
-          labels: [:state, :user],
+          labels: [:state, :user_id, :username],
         )
         @metrics[:video_transcode_sessions_count] = @registry.gauge(
           :"#{@metrics_prefix}_video_transcode_sessions_count",
           docstring: "Number of current sessions that are transcoding video",
-          labels: [:state, :user],
+          labels: [:state, :user_id, :username],
         )
         @metrics[:media_downloads_count] = @registry.gauge(
           :"#{@metrics_prefix}_media_downloads_count",
           docstring: "Number of current media downloads",
-          labels: [:user_id, :user],
+          labels: [:user_id, :username],
         )
       end
 
@@ -109,6 +109,7 @@ module PlexMediaServerExporter
 
       def collect_session_metrics
         collected = {}
+        users_by_id = {}
 
         # Initialize
         [:all, :audio_transcode, :video_transcode].each do |kind|
@@ -119,27 +120,32 @@ module PlexMediaServerExporter
           .dig("MediaContainer", "Metadata")
           &.each do |session_resource|
             state = session_resource.dig("Player", "state")
-            user = session_resource.dig("User", "title")
+            user_id = session_resource.dig("User", "id")
+            users_by_id[user_id] ||= {
+              username: session_resource.dig("User", "title"),
+            }
 
             if (transcode_session = session_resource.dig("TranscodeSession"))
               if transcode_session.dig("audioDecision") == "transcode"
-                collected[:audio_transcode][state][user] += 1
+                collected[:audio_transcode][state][user_id] += 1
               end
 
               if transcode_session.dig("videoDecision") == "transcode"
-                collected[:video_transcode][state][user] += 1
+                collected[:video_transcode][state][user_id] += 1
               end
             end
 
-            collected[:all][state][user] += 1
+            collected[:all][state][user_id] += 1
           end
 
-        collected.each do |metric_kind, counts_by_state_by_user|
+        collected.each do |metric_kind, counts_by_state_by_user_id|
           values = {}
 
-          counts_by_state_by_user.each do |state, counts_by_user|
-            counts_by_user.each do |user, count|
-              values[{ state: state, user: user }] = count
+          counts_by_state_by_user_id.each do |state, counts_by_user_id|
+            counts_by_user_id.each do |user_id, count|
+              username = users_by_id.dig(user_id, :username)
+
+              values[{ state: state, user_id: user_id, username: username }] = count
             end
           end
 
