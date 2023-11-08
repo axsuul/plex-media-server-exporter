@@ -34,22 +34,22 @@ module PlexMediaServerExporter
         @metrics[:all_sessions_count] = @registry.gauge(
           :"#{@metrics_prefix}_sessions_count",
           docstring: "Number of current sessions",
-          labels: [:state],
+          labels: [:state, :user],
         )
         @metrics[:audio_transcode_sessions_count] = @registry.gauge(
           :"#{@metrics_prefix}_audio_transcode_sessions_count",
           docstring: "Number of current sessions that are transcoding audio",
-          labels: [:state],
+          labels: [:state, :user],
         )
         @metrics[:video_transcode_sessions_count] = @registry.gauge(
           :"#{@metrics_prefix}_video_transcode_sessions_count",
           docstring: "Number of current sessions that are transcoding video",
-          labels: [:state],
+          labels: [:state, :user],
         )
         @metrics[:media_downloads_count] = @registry.gauge(
           :"#{@metrics_prefix}_media_downloads_count",
           docstring: "Number of current media downloads",
-          labels: [:user_id, :username],
+          labels: [:user_id, :user],
         )
       end
 
@@ -94,11 +94,11 @@ module PlexMediaServerExporter
             next unless activity_resource.dig("type") == "media.download"
 
             # The title will be something like "Media download by user123"
-            username = activity_resource.dig("title").split(/\s+/).last
+            user = activity_resource.dig("title").split(/\s+/).last
 
             labels = {
               user_id: activity_resource.dig("userID"),
-              username: username,
+              user: user,
             }
 
             values[labels] += 1
@@ -112,32 +112,35 @@ module PlexMediaServerExporter
 
         # Initialize
         [:all, :audio_transcode, :video_transcode].each do |kind|
-          collected[kind] = Hash.new { |h, k| h[k] = 0 }
+          collected[kind] = Hash.new { |h, k| h[k] = Hash.new { |hh, kk| hh[kk] = 0 } }
         end
 
         send_plex_api_request(method: :get, endpoint: "/status/sessions")
           .dig("MediaContainer", "Metadata")
           &.each do |session_resource|
             state = session_resource.dig("Player", "state")
+            user = session_resource.dig("User", "title")
 
             if (transcode_session = session_resource.dig("TranscodeSession"))
               if transcode_session.dig("audioDecision") == "transcode"
-                collected[:audio_transcode][state] += 1
+                collected[:audio_transcode][state][user] += 1
               end
 
               if transcode_session.dig("videoDecision") == "transcode"
-                collected[:video_transcode][state] += 1
+                collected[:video_transcode][state][user] += 1
               end
             end
 
-            collected[:all][state] += 1
+            collected[:all][state][user] += 1
           end
 
-        collected.each do |metric_kind, counts_by_state|
+        collected.each do |metric_kind, counts_by_state_by_user|
           values = {}
 
-          counts_by_state.each do |state, count|
-            values[{ state: state }] = count
+          counts_by_state_by_user.each do |state, counts_by_user|
+            counts_by_user.each do |user, count|
+              values[{ state: state, user: user }] = count
+            end
           end
 
           set_gauge_metric_values_or_reset_missing(metric: @metrics[:"#{metric_kind}_sessions_count"], values: values)
