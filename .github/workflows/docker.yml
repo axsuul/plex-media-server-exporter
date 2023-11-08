@@ -35,14 +35,21 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Determine release tag
+        uses: actions/checkout@v2
+
+        # Converts GITHUB_REF (e.g. refs/tags/0.0.2) to RELEASE_TAG (e.g. 0.0.2)
+        run: |
+          echo "RELEASE_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
       - name: Build Docker image tags
         run: |
           echo 'DOCKER_IMAGE_TAGS<<EOF' >> $GITHUB_ENV
           echo "ghcr.io/${{ github.repository }}:${{ github.sha }}" >> $GITHUB_ENV
 
           # Add release tag if it exists
-          if [[ ${{ github.ref }} ]]; then
-            echo ",ghcr.io/${{ github.repository }}:${{ github.ref }}" >> $GITHUB_ENV
+          if [[ $RELEASE_TAG }} ]]; then
+            echo ",ghcr.io/${{ github.repository }}:$RELEASE_TAG" >> $GITHUB_ENV
           fi
 
           # Only add latest tag if master branch
