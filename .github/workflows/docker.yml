@@ -41,7 +41,7 @@ jobs:
           echo "ghcr.io/${{ github.repository }}:${{ github.sha }}" >> $GITHUB_ENV
 
           # Add release tag if it exists
-          if [[ ${{ github.ref_name }} }} ]]; then
+          if [[ ${{ github.ref_name }} ]]; then
             echo ",ghcr.io/${{ github.repository }}:${{ github.ref_name }}" >> $GITHUB_ENV
           fi
 
