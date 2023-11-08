@@ -36,7 +36,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine release tag
-        uses: actions/checkout@v2
 
         # Converts GITHUB_REF (e.g. refs/tags/0.0.2) to RELEASE_TAG (e.g. 0.0.2)
         run: |
