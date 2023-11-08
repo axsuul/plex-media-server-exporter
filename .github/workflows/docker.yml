@@ -40,8 +40,8 @@ jobs:
           echo 'DOCKER_IMAGE_TAGS<<EOF' >> $GITHUB_ENV
           echo "ghcr.io/${{ github.repository }}:${{ github.sha }}" >> $GITHUB_ENV
 
-          # Add release tag if it exists
-          if [[ ${{ github.ref_name }} ]]; then
+          # Add release tag if it matches pattern (e.g. 0.0.1)
+          if [[ ${{ github.ref_name }} =~ .+\..+\..+ ]]; then
             echo ",ghcr.io/${{ github.repository }}:${{ github.ref_name }}" >> $GITHUB_ENV
           fi
 
