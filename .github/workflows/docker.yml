@@ -5,6 +5,7 @@ on:
     branches:
       - '**'
     tags:
+      # Must match pattern (e.g. 0.0.1)
       - '*.*.*'
 
 jobs:
