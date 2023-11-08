@@ -38,7 +38,10 @@ jobs:
       - name: Determine release tag
 
         # Converts GITHUB_REF (e.g. refs/tags/0.0.2) to RELEASE_TAG (e.g. 0.0.2)
-        run: echo "RELEASE_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+        run: |
+          echo "RELEASE_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+          echo 'EOF' >> $GITHUB_ENV
 
       - name: Build Docker image tags
         run: |
