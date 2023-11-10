@@ -5,7 +5,8 @@ on:
     branches:
       - '**'
     tags:
-      - 'v*.*.*'
+      # Must match pattern (e.g. 0.0.1)
+      - '*.*.*'
 
 jobs:
   docker:
@@ -39,6 +40,11 @@ jobs:
         run: |
           echo 'DOCKER_IMAGE_TAGS<<EOF' >> $GITHUB_ENV
           echo "ghcr.io/${{ github.repository }}:${{ github.sha }}" >> $GITHUB_ENV
+
+          # Add release tag if it matches pattern (e.g. 0.0.1)
+          if [[ ${{ github.ref_name }} =~ .+\..+\..+ ]]; then
+            echo ",ghcr.io/${{ github.repository }}:${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
 
           # Only add latest tag if master branch
           if [[ ${{ github.ref_name }} == 'master' ]]; then

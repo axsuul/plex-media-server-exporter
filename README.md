@@ -44,23 +44,24 @@ plex_media_count{title="Audiobooks",type="artist"} 17.0
 plex_media_count{title="Music",type="artist"} 891.0
 # TYPE plex_sessions_count gauge
 # HELP plex_sessions_count Number of current sessions
-plex_sessions_count{state="buffering"} 0.0
-plex_sessions_count{state="paused"} 1.0
-plex_sessions_count{state="playing"} 2.0
+plex_sessions_count{state="buffering",user_id="3",username="Tarantino"} 1.0
+plex_sessions_count{state="paused",user_id="2",username="Scorsese"} 1.0
+plex_sessions_count{state="playing",user_id="3",username="Tarantino"} 1.0
+plex_sessions_count{state="playing",user_id="1",username="Hitchcock"} 2.0
 # TYPE plex_audio_transcode_sessions_count gauge
 # HELP plex_audio_transcode_sessions_count Number of current sessions that are transcoding audio
-plex_audio_transcode_sessions_count{state="buffering"} 0.0
-plex_audio_transcode_sessions_count{state="paused"} 0.0
-plex_audio_transcode_sessions_count{state="playing"} 0.0
+plex_audio_transcode_sessions_count{state="buffering",user_id="1",username="Hitchcock"} 1.0
+plex_audio_transcode_sessions_count{state="paused",user_id="2",username="Scorsese"} 1.0
+plex_audio_transcode_sessions_count{state="playing",user_id="3",username="Tarantino"} 1.0
 # TYPE plex_video_transcode_sessions_count gauge
 # HELP plex_video_transcode_sessions_count Number of current sessions that are transcoding video
-plex_video_transcode_sessions_count{state="buffering"} 0.0
-plex_video_transcode_sessions_count{state="paused"} 0.0
-plex_video_transcode_sessions_count{state="playing"} 1.0
+plex_video_transcode_sessions_count{state="buffering",user_id="1",username="Hitchcock"} 1.0
+plex_video_transcode_sessions_count{state="paused",user_id="2",username="Scorsese"} 1.0
+plex_video_transcode_sessions_count{state="playing",user_id="3",username="Tarantino"} 1.0
 # TYPE plex_media_downloads_count gauge
 # HELP plex_media_downloads_count Number of current media downloads
-plex_media_downloads_count{user_id="1",username="axsuul"} 1.0
-plex_media_downloads_count{user_id="2",username="hoarder"} 3.0
+plex_media_downloads_count{user_id="1",user_id="1",username="Hitchcock"} 1.0
+plex_media_downloads_count{user_id="2",user_id="2",username="Scorsese"} 3.0
 ```
 
 ## Grafana
