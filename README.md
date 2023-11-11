@@ -20,7 +20,7 @@ These environment variables can be passed into the container (defaults are in pa
 * `PLEX_TIMEOUT` (`10`)
   - How long to wait for Plex Media Server to respond
 * `PLEX_RETRIES_COUNT` (`0`)
-  - How many times to retry Plex Media Server requests if they fail
+  - How many times to retry failed Plex Media Server requests
 * `METRICS_PREFIX` (`plex`)
   - What to prefix metric names with
 * `METRICS_MEDIA_COLLECTING_INTERVAL_SECONDS` (`300`)
