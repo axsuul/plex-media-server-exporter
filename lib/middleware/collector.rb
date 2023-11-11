@@ -9,7 +9,9 @@ module PlexMediaServerExporter
 
         # Plex configs
         @plex_addr = ENV["PLEX_ADDR"] || "http://localhost:32400"
+        @plex_token = ENV["PLEX_TOKEN"]
         @plex_timeout = ENV["PLEX_TIMEOUT"]&.to_i || 10
+        @plex_retries_count = ENV["PLEX_RETRIES_COUNT"]&.to_i || 0
 
         # Metrics configs
         @metrics_prefix = ENV["METRICS_PREFIX"] || "plex"
@@ -203,15 +205,24 @@ module PlexMediaServerExporter
       end
 
       def send_plex_api_request(method:, endpoint:, **options)
-        response = HTTP
-          .timeout(@plex_timeout)
-          .headers(
-            "X-Plex-Token" => ENV["PLEX_TOKEN"],
-            "Accept" => "application/json",
-          )
-          .public_send(method, "#{@plex_addr}#{endpoint}", **options)
+        count = 0
 
-        JSON.parse(response)
+        # Keep trying request if it fails until number of retries have been exhausted
+        loop do
+          count += 1
+          response = HTTP
+            .timeout(@plex_timeout)
+            .headers(
+              "X-Plex-Token" => @plex_token,
+              "Accept" => "application/json",
+            )
+            .public_send(method, "#{@plex_addr}#{endpoint}", **options)
+
+          return JSON.parse(response)
+
+        rescue HTTP::Error => e
+          raise(e) unless @plex_retries_count <= count
+        end
       end
 
       # Set metric values and reset all other labels that werenn't passed in
