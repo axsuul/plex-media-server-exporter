@@ -8,6 +8,7 @@ services:
       # Can be set in .env
       - PLEX_ADDR=${PLEX_ADDR}
       - PLEX_TOKEN=${PLEX_TOKEN}
+      - PLEX_TIMEOUT=${PLEX_TIMEOUT}
       - PLEX_RETRIES_COUNT=${PLEX_RETRIES_COUNT}
       - METRICS_MEDIA_COLLECTING_INTERVAL_SECONDS=300
     volumes:

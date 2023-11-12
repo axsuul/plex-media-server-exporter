@@ -56,9 +56,22 @@ module PlexMediaServerExporter
       end
 
       def call(env)
+        case env["PATH_INFO"]
+        when "/metrics"
+          collect_metrics
+        end
+
+        @app.call(env)
+      end
+
+      def collect_metrics
+        log(step: "collect_metrics")
+
         begin
-          capabilities_resource = send_plex_api_request(method: :get, endpoint: "/").dig("MediaContainer")
+          capabilities_resource = send_plex_api_request(method: :get, endpoint: "/identity").dig("MediaContainer")
           metric_up_value = 1
+
+          log(plex_up: true)
 
           set_gauge_metric_values_or_reset_missing(
             metric: @metrics[:info],
@@ -66,11 +79,9 @@ module PlexMediaServerExporter
               { version: capabilities_resource.dig("version") } => 1,
             },
           )
-
-          collect_session_metrics
-          collect_activity_metrics
-          collect_media_metrics
         rescue HTTP::Error
+          log(plex_up: false)
+
           # Value of 0 means there's no heartbeat
           metric_up_value = 0
         ensure
@@ -82,10 +93,22 @@ module PlexMediaServerExporter
           )
         end
 
-        @app.call(env)
+        [
+          -> { collect_session_metrics },
+          -> { collect_activity_metrics },
+          -> { collect_media_metrics },
+        ].each do |collection|
+          collection.call
+        rescue HTTP::Error
+          # Skip if it errors out
+        end
       end
 
       private
+
+      def log(**labels)
+        puts(labels.to_a.map { |k, v| "#{k}=#{v}" }.join(" "))
+      end
 
       def collect_activity_metrics
         values = Hash.new { |h, k| h[k] = 0 }
@@ -209,13 +232,17 @@ module PlexMediaServerExporter
 
         # Keep trying request if it fails until number of retries have been exhausted
         loop do
+          url = "#{@plex_addr}#{endpoint}"
+
+          log(method: method, url: url)
+
           response = HTTP
             .timeout(@plex_timeout)
             .headers(
               "X-Plex-Token" => @plex_token,
               "Accept" => "application/json",
             )
-            .public_send(method, "#{@plex_addr}#{endpoint}", **options)
+            .public_send(method, url, **options)
 
           return JSON.parse(response)
         rescue HTTP::Error => e
