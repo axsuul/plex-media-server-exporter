@@ -205,11 +205,10 @@ module PlexMediaServerExporter
       end
 
       def send_plex_api_request(method:, endpoint:, **options)
-        count = 0
+        retries_count = 0
 
         # Keep trying request if it fails until number of retries have been exhausted
         loop do
-          count += 1
           response = HTTP
             .timeout(@plex_timeout)
             .headers(
@@ -219,9 +218,10 @@ module PlexMediaServerExporter
             .public_send(method, "#{@plex_addr}#{endpoint}", **options)
 
           return JSON.parse(response)
-
         rescue HTTP::Error => e
-          raise(e) unless @plex_retries_count <= count
+          raise(e) if retries_count >= @plex_retries_count
+
+          retries_count += 1
         end
       end
 
