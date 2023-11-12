@@ -66,6 +66,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache-new
 
       - name: Update Docker buildx cache
+        if: ${{ github.event_name == 'release' }}
         run: |
           rm -rf /tmp/.buildx-cache
           mv /tmp/.buildx-cache-new /tmp/.buildx-cache
