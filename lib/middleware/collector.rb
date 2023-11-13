@@ -9,7 +9,9 @@ module PlexMediaServerExporter
 
         # Plex configs
         @plex_addr = ENV["PLEX_ADDR"] || "http://localhost:32400"
+        @plex_token = ENV["PLEX_TOKEN"]
         @plex_timeout = ENV["PLEX_TIMEOUT"]&.to_i || 10
+        @plex_retries_count = ENV["PLEX_RETRIES_COUNT"]&.to_i || 0
 
         # Metrics configs
         @metrics_prefix = ENV["METRICS_PREFIX"] || "plex"
@@ -54,9 +56,22 @@ module PlexMediaServerExporter
       end
 
       def call(env)
+        case env["PATH_INFO"]
+        when "/metrics"
+          collect_metrics
+        end
+
+        @app.call(env)
+      end
+
+      def collect_metrics
+        log(step: "collect_metrics")
+
         begin
-          capabilities_resource = send_plex_api_request(method: :get, endpoint: "/").dig("MediaContainer")
+          capabilities_resource = send_plex_api_request(method: :get, endpoint: "/identity").dig("MediaContainer")
           metric_up_value = 1
+
+          log(plex_up: true)
 
           set_gauge_metric_values_or_reset_missing(
             metric: @metrics[:info],
@@ -64,11 +79,9 @@ module PlexMediaServerExporter
               { version: capabilities_resource.dig("version") } => 1,
             },
           )
-
-          collect_session_metrics
-          collect_activity_metrics
-          collect_media_metrics
         rescue HTTP::Error
+          log(plex_up: false)
+
           # Value of 0 means there's no heartbeat
           metric_up_value = 0
         ensure
@@ -80,10 +93,22 @@ module PlexMediaServerExporter
           )
         end
 
-        @app.call(env)
+        [
+          -> { collect_session_metrics },
+          -> { collect_activity_metrics },
+          -> { collect_media_metrics },
+        ].each do |collection|
+          collection.call
+        rescue HTTP::Error
+          # Skip if it errors out
+        end
       end
 
       private
+
+      def log(**labels)
+        puts(labels.to_a.map { |k, v| "#{k}=#{v}" }.join(" "))
+      end
 
       def collect_activity_metrics
         values = Hash.new { |h, k| h[k] = 0 }
@@ -203,15 +228,28 @@ module PlexMediaServerExporter
       end
 
       def send_plex_api_request(method:, endpoint:, **options)
-        response = HTTP
-          .timeout(@plex_timeout)
-          .headers(
-            "X-Plex-Token" => ENV["PLEX_TOKEN"],
-            "Accept" => "application/json",
-          )
-          .public_send(method, "#{@plex_addr}#{endpoint}", **options)
+        retries_count = 0
 
-        JSON.parse(response)
+        # Keep trying request if it fails until number of retries have been exhausted
+        loop do
+          url = "#{@plex_addr}#{endpoint}"
+
+          log(method: method, url: url)
+
+          response = HTTP
+            .timeout(@plex_timeout)
+            .headers(
+              "X-Plex-Token" => @plex_token,
+              "Accept" => "application/json",
+            )
+            .public_send(method, url, **options)
+
+          return JSON.parse(response)
+        rescue HTTP::Error => e
+          raise(e) if retries_count >= @plex_retries_count
+
+          retries_count += 1
+        end
       end
 
       # Set metric values and reset all other labels that werenn't passed in
