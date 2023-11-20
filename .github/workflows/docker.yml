@@ -36,7 +36,6 @@ jobs:
       - name: Build Docker image tags
         run: |
           echo 'DOCKER_IMAGE_TAGS<<EOF' >> $GITHUB_ENV
-          echo "ghcr.io/${{ github.repository }}:${{ github.sha }}" >> $GITHUB_ENV
 
           # Add release tag if it matches pattern (e.g. 0.0.1)
           if [[ ${{ github.ref_name }} =~ .+\..+\..+ ]]; then

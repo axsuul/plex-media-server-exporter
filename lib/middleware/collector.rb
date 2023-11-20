@@ -119,11 +119,11 @@ module PlexMediaServerExporter
             next unless activity_resource.dig("type") == "media.download"
 
             # The title will be something like "Media download by user123"
-            user = activity_resource.dig("title").split(/\s+/).last
+            username = activity_resource.dig("title").split(/\s+/).last
 
             labels = {
               user_id: activity_resource.dig("userID"),
-              user: user,
+              username: username,
             }
 
             values[labels] += 1
