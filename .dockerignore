@@ -1,0 +1,10 @@
+# .dockerignore
+.github/
+.idea/
+examples/
+README.md
+LICENSE
+.git/
+*.md
+*.yml
+Dockerfile
