@@ -34,10 +34,10 @@ PLATFORMS
   x64-mingw-ucrt
 
 DEPENDENCIES
-  http
-  prometheus-client
-  puma
-  rack
+  http (~> 5.1.1)
+  prometheus-client (~> 4.2.2)
+  puma (~> 6.4.0)
+  rack (~> 3.0.8)
 
 RUBY VERSION
    ruby 3.2.2p53

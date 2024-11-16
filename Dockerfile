@@ -1,5 +1,5 @@
 # The first stage is dedicated to building the application
-FROM ruby:3.2.2-alpine as BUILD
+FROM ruby:3.2.2-alpine AS build
 
 ENV PORT=9594 \
     USER=app \
@@ -8,7 +8,7 @@ ENV PORT=9594 \
 
 WORKDIR $ROOT
 
-# Updating system packages and installing dependencies
+# Update system packages and installing dependencies
 RUN apk update && apk upgrade && \
     apk add --update --no-cache --virtual .build-deps \
     build-base \
@@ -29,10 +29,10 @@ RUN gem install bundler && \
 COPY . $ROOT/
 
 # The second stage is responsible for preparing the runtime
-FROM ruby:3.2.2-alpine as RUNTIME
+FROM ruby:3.2.2-alpine AS runtime
 
-# Copy over files from the BUILD step
-COPY --from=BUILD $ROOT $ROOT
+# Copy over files from the build step
+COPY --from=build $ROOT $ROOT
 
 # Set environmental variables
 ENV PORT=9594 \

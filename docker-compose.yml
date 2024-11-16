@@ -1,8 +1,6 @@
-version: '3.4'
-
 services:
   app:
-    image: axsuul/plex-media-server-exporter:2022-11-26
+    image: axsuul/plex-media-server-exporter
     build: .
     environment:
       # Can be set in .env
