@@ -1,20 +1,52 @@
-FROM ruby:3.0.5
+# The first stage is dedicated to building the application
+FROM ruby:3.2.2-alpine as BUILD
 
-MAINTAINER James Hu <hello@james.hu>
-
-ENV PORT 9594
-ENV ROOT /srv
-RUN mkdir -p $ROOT
+ENV PORT=9594 \
+    USER=app \
+    GROUP=appgroup \
+    ROOT=/srv
 
 WORKDIR $ROOT
 
-COPY Gemfile $ROOT
-COPY Gemfile.lock $ROOT
+# Updating system packages and installing dependencies
+RUN apk update && apk upgrade && \
+    apk add --update --no-cache --virtual .build-deps \
+    build-base \
+    libffi-dev \
+    ruby-dev
 
-RUN bundle install
+# Copy the Gemfile and Gemfile.lock
+COPY Gemfile Gemfile.lock $ROOT/
 
-COPY . $ROOT
+# Run the specific version of bundle to install all the necessary libraries
+RUN gem install bundler && \
+    bundle install && \
+    apk del .build-deps && \
+    rm -rf /usr/local/bundle/cache/*.gem && \
+    find /usr/local/bundle/gems/ -name "*.c" -delete && \
+    find /usr/local/bundle/gems/ -name "*.o" -delete
 
-RUN chmod +x config.ru
+COPY . $ROOT/
 
-CMD bundle exec puma --port $PORT
+# The second stage is responsible for preparing the runtime
+FROM ruby:3.2.2-alpine as RUNTIME
+
+# Copy over files from the BUILD step
+COPY --from=BUILD $ROOT $ROOT
+
+# Set environmental variables
+ENV PORT=9594 \
+    USER=app \
+    GROUP=appgroup \
+    ROOT=/srv
+
+WORKDIR $ROOT
+
+RUN addgroup -S $GROUP && \
+    adduser -S $USER -G $GROUP && \
+    chown -R $USER:$GROUP $ROOT && \
+    chmod 755 config.ru
+
+USER $USER:$GROUP
+
+CMD bundle exec puma -b tcp://0.0.0.0:$PORT

@@ -1,15 +1,15 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    addressable (2.8.1)
+    addressable (2.8.6)
       public_suffix (>= 2.0.2, < 6.0)
-    domain_name (0.5.20190701)
-      unf (>= 0.0.5, < 1.0.0)
-    ffi (1.15.5)
+    domain_name (0.6.20231109)
+    ffi (1.16.3)
+    ffi (1.16.3-x64-mingw-ucrt)
     ffi-compiler (1.0.1)
       ffi (>= 1.0.0)
       rake
-    http (5.1.0)
+    http (5.1.1)
       addressable (~> 2.8)
       http-cookie (~> 1.0)
       http-form_data (~> 2.2)
@@ -20,29 +20,27 @@ GEM
     llhttp-ffi (0.4.0)
       ffi-compiler (~> 1.0)
       rake (~> 13.0)
-    nio4r (2.5.8)
-    prometheus-client (4.0.0)
-    public_suffix (5.0.0)
-    puma (6.0.0)
+    nio4r (2.7.0)
+    prometheus-client (4.2.2)
+    public_suffix (5.0.4)
+    puma (6.4.0)
       nio4r (~> 2.0)
-    rack (3.0.1)
-    rake (13.0.6)
-    unf (0.1.4)
-      unf_ext
-    unf_ext (0.0.8.2)
+    rack (3.0.8)
+    rake (13.1.0)
 
 PLATFORMS
   aarch64-linux
   arm64-darwin-21
+  x64-mingw-ucrt
 
 DEPENDENCIES
-  http (= 5.1.0)
-  prometheus-client (= 4.0.0)
-  puma (= 6.0.0)
-  rack (= 3.0.1)
+  http
+  prometheus-client
+  puma
+  rack
 
 RUBY VERSION
-   ruby 3.0.5p211
+   ruby 3.2.2p53
 
 BUNDLED WITH
-   2.2.33
+   2.5.3
